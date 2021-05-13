@@ -105,8 +105,8 @@ func start(cmd *cobra.Command, args []string) {
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		resp := fmt.Sprintf("<html>" +
-			"<head><title>JSZ Exporter</title></head>" +
-			"<body>\n<h1>JSZ Exporter</h1>" +
+			"<head><title>Jetstream Exporter</title></head>" +
+			"<body>\n<h1>Jetstream Exporter</h1>" +
 			"<p><a href='/metrics'>Metrics</a></p>" +
 			"</body>\n</html>")
 		fmt.Fprint(w, resp)
