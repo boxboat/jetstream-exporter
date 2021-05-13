@@ -31,34 +31,37 @@ type Exporter struct {
 type metricInfo struct {
 	Desc *prometheus.Desc
 	Type prometheus.ValueType
+	ValueType string
 	Value float64
 	NatsType string
 	StreamName string
 	ConsumerName string
 }
 
-func newStreamMetric(name string, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
+func newStreamMetric(name, streamName, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
 	return metricInfo{
 		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName("nats_jsz", "streams", "total"),
+			prometheus.BuildFQName("nats_jsz", "streams", name),
 			help,
 			[]string{"stream"},
 			constLabels,
 		),
 		Type: t,
+		ValueType: name,
 		NatsType: "stream",
-		StreamName: name,
+		StreamName: streamName,
 	}
 }
-func newConsumerMetric(consumerName string, streamName string, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
+func newConsumerMetric(name, consumerName, streamName, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
 	return metricInfo{
 		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName("nats_jsz", "consumer", "total"),
+			prometheus.BuildFQName("nats_jsz", "consumer", name),
 			help,
 			[]string{"consumer"},
 			constLabels,
 		),
 		Type: t,
+		ValueType: name,
 		NatsType: "consumer",
 		StreamName: streamName,
 		ConsumerName: consumerName,
@@ -107,7 +110,13 @@ func (m *metricInfo) ScrapeStream(ch chan<- prometheus.Metric) error {
 	if err != nil {
 		return err
 	}
-	ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(info.State.Msgs), m.StreamName)
+
+	switch m.ValueType {
+	case totalMessage:
+		ch <- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(info.State.Msgs), m.StreamName)
+	case totalBytes:
+		ch <- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(info.State.Bytes), m.StreamName)
+	}
 	return nil
 }
 
@@ -122,9 +131,17 @@ func (m *metricInfo) ScrapeConsumer(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
-	conn.RedeliveryCount()
+	redelivery, err := conn.RedeliveryCount()
+	if err != nil {
+		return err
+	}
 
-	ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), m.ConsumerName)
+	switch m.ValueType {
+	case msgPending:
+		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), m.ConsumerName)
+	case msgRedeliver:
+		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(redelivery), m.ConsumerName)
+	}
 
 	return nil
 }
