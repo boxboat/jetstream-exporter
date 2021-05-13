@@ -122,6 +122,8 @@ func (m *metricInfo) ScrapeConsumer(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
+	conn.RedeliveryCount()
+
 	ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), m.ConsumerName)
 
 	return nil

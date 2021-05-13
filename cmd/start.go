@@ -60,6 +60,11 @@ var (
 	streamMetrics = []metricInfo{}
 	consumerMetrics = []metricInfo{}
 
+	totalMessage = "total_msg"
+	totalBytes = "total_bytes"
+	msgPending = "msg_pending"
+	msgRedeliver = "msg_redelivery"
+
 )
 
 func init() {
@@ -73,12 +78,14 @@ func start(cmd *cobra.Command, args []string) {
 
 	exporter := NewExporter()
 	for _, v := range viper.GetStringSlice("streams") {
-		metric := newStreamMetric(v, "Total number of stream messages", prometheus.CounterValue, nil)
-		exporter.Metrics = append(exporter.Metrics, metric)
+		msg := newStreamMetric(totalMessage, "Total number of stream messages", prometheus.CounterValue, nil)
+		bytes := newStreamMetric(totalBytes, "Total number of stream bytes", prometheus.CounterValue, nil)
+		exporter.Metrics = append(exporter.Metrics, msg, bytes)
 	}
 	for _, v := range consumers {
-		metric := newConsumerMetric(v.Name, v.Stream,"Current number of consumer messages", prometheus.GaugeValue, nil)
-		exporter.Metrics = append(exporter.Metrics, metric)
+		msg := newConsumerMetric(msgPending, v.Stream,"Current number of consumer messages", prometheus.GaugeValue, nil)
+		redelivery := newConsumerMetric(msgRedeliver, v.Stream, "Number of redelivers", prometheus.CounterValue, nil)
+		exporter.Metrics = append(exporter.Metrics, msg)
 	}
 
 	prometheus.MustRegister(exporter)
