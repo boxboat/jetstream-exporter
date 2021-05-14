@@ -70,6 +70,7 @@ var (
 func init() {
 	rootCmd.AddCommand(startCmd)
 	startCmd.Flags().StringSliceP("servers", "s", []string{"nats://localhost:4222"}, "NATS Servers")
+	startCmd.Flags().StringP("port", "p", "9999", "Server Port")
 }
 
 func start(cmd *cobra.Command, args []string) {
@@ -111,6 +112,8 @@ func start(cmd *cobra.Command, args []string) {
 			"</body>\n</html>")
 		fmt.Fprint(w, resp)
 	})
-	log.Fatal(http.ListenAndServe(":9999", nil))
+
+	serverPort := fmt.Sprintf(":%s", viper.GetString("port"))
+	log.Fatal(http.ListenAndServe(serverPort, nil))
 
 }

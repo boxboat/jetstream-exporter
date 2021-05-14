@@ -8,6 +8,8 @@ The exporter does not currently support auth.
 
 ## Config
 ```
+port: 9999
+
 servers:
   - nats://localhost:4222
 
