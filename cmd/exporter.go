@@ -22,87 +22,93 @@ import (
 	"sync"
 )
 
-type Exporter struct {
-	Mutex sync.RWMutex
-	Metrics []metricInfo
+// exporter holds metrics and satisfies the Describe and Collect
+// methods required for the Collector interface.
+type exporter struct {
+	mutex   sync.RWMutex
+	metrics []metricInfo
 }
 
-
-
+// metricInfo holds all of the information about a metric
 type metricInfo struct {
-	Desc *prometheus.Desc
-	Type prometheus.ValueType
-	ValueType string
-	Value float64
-	NatsType string
-	StreamName string
-	ConsumerName string
+	desc         *prometheus.Desc
+	promType     prometheus.ValueType
+	valueType    string
+	value        float64
+	natsType     string
+	streamName   string
+	consumerName string
 }
 
+// newStreamMetric returns a metricInfo specific to a stream
 func newStreamMetric(name, streamName, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
 	return metricInfo{
-		Desc: prometheus.NewDesc(
+		desc: prometheus.NewDesc(
 			prometheus.BuildFQName("nats_jsz", "streams", name),
 			help,
 			[]string{"stream"},
 			constLabels,
 		),
-		Type: t,
-		ValueType: name,
-		NatsType: "stream",
-		StreamName: streamName,
+		promType:   t,
+		valueType:  name,
+		natsType:   "stream",
+		streamName: streamName,
 	}
 }
+
+// newConsumerMetric returns a metricInfo specific to a consumer
 func newConsumerMetric(name, consumerName, streamName, help string, t prometheus.ValueType, constLabels prometheus.Labels) metricInfo {
 	return metricInfo{
-		Desc: prometheus.NewDesc(
+		desc: prometheus.NewDesc(
 			prometheus.BuildFQName("nats_jsz", "consumer", name),
 			help,
 			[]string{"consumer"},
 			constLabels,
 		),
-		Type: t,
-		ValueType: name,
-		NatsType: "consumer",
-		StreamName: streamName,
-		ConsumerName: consumerName,
-
+		promType:     t,
+		valueType:    name,
+		natsType:     "consumer",
+		streamName:   streamName,
+		consumerName: consumerName,
 	}
 }
 
-func NewExporter() *Exporter {
-	return &Exporter{}
+// newExporter returns a new exporter
+func newExporter() *exporter {
+	return &exporter{}
 }
 
-func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	for _, v := range e.Metrics {
-		ch <- v.Desc
+// Describe describes the metrics
+func (e *exporter) Describe(ch chan<- *prometheus.Desc) {
+	for _, v := range e.metrics {
+		ch <- v.desc
 	}
 }
 
-func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	e.Mutex.Lock()
-	defer e.Mutex.Unlock()
+// Collect gets prometheus metrics from the specified servers
+func (e *exporter) Collect(ch chan<- prometheus.Metric) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 
-	e.Scrape(ch)
+	e.scrape(ch)
 }
 
-
-func (e *Exporter) Scrape(ch chan<- prometheus.Metric) {
-	for _, v := range e.Metrics {
-		switch v.NatsType{
+// scrape checks the metric type and fetches metrics based on that type
+func (e *exporter) scrape(ch chan<- prometheus.Metric) {
+	for _, v := range e.metrics {
+		switch v.natsType {
 		case "stream":
-			v.ScrapeStream(ch)
+			v.scrapeStream(ch)
 
 		case "consumer":
-			v.ScrapeConsumer(ch)
+			v.scrapeConsumer(ch)
 		}
 	}
-
 }
 
-func (m *metricInfo) ScrapeStream(ch chan<- prometheus.Metric) error {
-	stream, err := mgr.LoadStream(m.StreamName)
+// scrapeStream fetches the total message and total bytes for a stream
+func (m *metricInfo) scrapeStream(ch chan<- prometheus.Metric) error {
+	stream, err := mgr.LoadStream(m.streamName)
 	if err != nil {
 		return err
 	}
@@ -112,17 +118,18 @@ func (m *metricInfo) ScrapeStream(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
-	switch m.ValueType {
+	switch m.valueType {
 	case totalMessage:
-		ch <- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(info.State.Msgs), m.StreamName)
+		ch <- prometheus.MustNewConstMetric(m.desc, m.promType, float64(info.State.Msgs), m.streamName)
 	case totalBytes:
-		ch <- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(info.State.Bytes), m.StreamName)
+		ch <- prometheus.MustNewConstMetric(m.desc, m.promType, float64(info.State.Bytes), m.streamName)
 	}
 	return nil
 }
 
-func (m *metricInfo) ScrapeConsumer(ch chan<- prometheus.Metric) error {
-	conn, err := mgr.LoadConsumer(m.StreamName, m.ConsumerName)
+// scrapeConsumer fetches the current pending messages and total redelivery count for a consumer
+func (m *metricInfo) scrapeConsumer(ch chan<- prometheus.Metric) error {
+	conn, err := mgr.LoadConsumer(m.streamName, m.consumerName)
 	if err != nil {
 		return err
 	}
@@ -137,13 +144,13 @@ func (m *metricInfo) ScrapeConsumer(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
-	labels := fmt.Sprintf("%s:%s", m.ConsumerName, m.StreamName)
+	labels := fmt.Sprintf("%s:%s", m.consumerName, m.streamName)
 
-	switch m.ValueType {
+	switch m.valueType {
 	case msgPending:
-		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), labels)
+		ch <- prometheus.MustNewConstMetric(m.desc, m.promType, float64(pending), labels)
 	case msgRedeliver:
-		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(redelivery), labels)
+		ch <- prometheus.MustNewConstMetric(m.desc, m.promType, float64(redelivery), labels)
 	}
 
 	return nil

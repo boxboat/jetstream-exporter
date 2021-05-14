@@ -32,7 +32,7 @@ import (
 )
 
 type Consumer struct {
-	Name string
+	Name   string
 	Stream string
 }
 
@@ -40,7 +40,7 @@ type Consumer struct {
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the exporter",
-	Run: start,
+	Run:   start,
 }
 
 var (
@@ -53,18 +53,17 @@ var (
 	prevMessages = 0.0
 
 	streamSlice = []string{"STATUS", "BUILDS"}
-	consumers = map[string]string{
+	consumers   = map[string]string{
 		"STATUS": "FAILED",
 	}
 
-	streamMetrics = []metricInfo{}
+	streamMetrics   = []metricInfo{}
 	consumerMetrics = []metricInfo{}
 
 	totalMessage = "total_msg"
-	totalBytes = "total_bytes"
-	msgPending = "msg_pending"
+	totalBytes   = "total_bytes"
+	msgPending   = "msg_pending"
 	msgRedeliver = "msg_redelivery"
-
 )
 
 func init() {
@@ -73,20 +72,21 @@ func init() {
 	startCmd.Flags().StringP("port", "p", "9999", "Server Port")
 }
 
+// start starts the metrics server
 func start(cmd *cobra.Command, args []string) {
 	var consumers []Consumer
 	viper.UnmarshalKey("consumers", &consumers)
 
-	exporter := NewExporter()
+	exporter := newExporter()
 	for _, v := range viper.GetStringSlice("streams") {
 		msg := newStreamMetric(totalMessage, v, "Total number of stream messages", prometheus.CounterValue, nil)
 		bytes := newStreamMetric(totalBytes, v, "Total number of stream bytes", prometheus.CounterValue, nil)
-		exporter.Metrics = append(exporter.Metrics, msg, bytes)
+		exporter.metrics = append(exporter.metrics, msg, bytes)
 	}
 	for _, v := range consumers {
-		msg := newConsumerMetric(msgPending, v.Name, v.Stream,"Current number of consumer messages", prometheus.GaugeValue, nil)
+		msg := newConsumerMetric(msgPending, v.Name, v.Stream, "Current number of consumer messages", prometheus.GaugeValue, nil)
 		redelivery := newConsumerMetric(msgRedeliver, v.Name, v.Stream, "Number of redelivers", prometheus.CounterValue, nil)
-		exporter.Metrics = append(exporter.Metrics, msg, redelivery)
+		exporter.metrics = append(exporter.metrics, msg, redelivery)
 	}
 
 	prometheus.MustRegister(exporter)
