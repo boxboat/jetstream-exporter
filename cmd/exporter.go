@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 )
@@ -136,11 +137,13 @@ func (m *metricInfo) ScrapeConsumer(ch chan<- prometheus.Metric) error {
 		return err
 	}
 
+	labels := fmt.Sprintf("%s:%s", m.ConsumerName, m.StreamName)
+
 	switch m.ValueType {
 	case msgPending:
-		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), m.ConsumerName)
+		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(pending), labels)
 	case msgRedeliver:
-		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(redelivery), m.ConsumerName)
+		ch<- prometheus.MustNewConstMetric(m.Desc, m.Type, float64(redelivery), labels)
 	}
 
 	return nil

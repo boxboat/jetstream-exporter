@@ -19,4 +19,20 @@ consumers:
     stream: ORDERS
 ```
 
+## Output
+
+```
+# HELP nats_jsz_consumer_msg_pending Current number of consumer messages
+# TYPE nats_jsz_consumer_msg_pending gauge
+nats_jsz_consumer_msg_pending{consumer="COMPLETE:ORDERS"} 6
+# HELP nats_jsz_consumer_msg_redelivery Number of redelivers
+# TYPE nats_jsz_consumer_msg_redelivery counter
+nats_jsz_consumer_msg_redelivery{consumer="COMPLETE:ORDERS"} 0
+# HELP nats_jsz_streams_total_bytes Total number of stream bytes
+# TYPE nats_jsz_streams_total_bytes counter
+nats_jsz_streams_total_bytes{stream="ORDERS"} 736
+# HELP nats_jsz_streams_total_msg Total number of stream messages
+# TYPE nats_jsz_streams_total_msg counter
+nats_jsz_streams_total_msg{stream="ORDERS"} 14
+```
 
