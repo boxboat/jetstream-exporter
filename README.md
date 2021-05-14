@@ -38,3 +38,5 @@ nats_jsz_streams_total_bytes{stream="ORDERS"} 736
 nats_jsz_streams_total_msg{stream="ORDERS"} 14
 ```
 
+## Docker
+The image expects a volume with the config mounted at `/config/jetstream-exporter.yaml`.

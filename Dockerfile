@@ -10,4 +10,4 @@ FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/jetstream-exporter .
 
-CMD ["./jetstream-exporter start"]
+CMD ["./jetstream-exporter", "start", "--config=/config/jetstream-exporter.yaml"]
